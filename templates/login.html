@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="auth">
+    <div class="auth-card">
+        <h2>Connexion</h2>
+        <p class="subtitle">Heureux de te revoir.</p>
+
+        <form class="form js-important" method="post" action="{{ url_for('login', next=next_url) }}">
+            {% if next_url %}
+              <input type="hidden" name="next" value="{{ next_url }}">
+            {% endif %}
+            <label>
+                <span>Email</span>
+                <input name="email" type="email" placeholder="toi@email.com" required>
+            </label>
+
+            <label>
+                <span>Mot de passe</span>
+                <input name="password" type="password" placeholder="••••••••" required>
+            </label>
+
+            <button class="btn-primary" type="submit">Se connecter</button>
+        </form>
+
+        <p class="auth-foot">
+            Pas encore de compte ? <a href="{{ url_for('register') }}">S’inscrire</a>
+        </p>
+    </div>
+</section>
+{% endblock %}

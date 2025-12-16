@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Mes achats</h2>
+<p class="subtitle">Historique de tes commandes.</p>
+
+{% if not orders %}
+    <div class="empty">
+        <p>Aucune commande pour l’instant.</p>
+        <a class="btn-secondary btn-link" href="{{ url_for('catalogue') }}">Faire un achat</a>
+    </div>
+{% else %}
+    <div class="orders">
+        {% for o in orders %}
+            <div class="order">
+                <div class="order-left">
+                    <div class="order-id">Commande #{{ o.id }}</div>
+                    <div class="order-meta">{{ o.created_at }} • {{ o.status }}</div>
+                </div>
+                <div class="order-total">{{ '%.2f' % (o.total_cents / 100) }} €</div>
+            </div>
+        {% endfor %}
+    </div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+
+{% block content %}
+<nav class="breadcrumb" aria-label="Fil d'Ariane">
+  <a href="{{ url_for('catalogue') }}">Catalogue</a>
+  <span class="breadcrumb-sep">/</span>
+  <span class="breadcrumb-current">{{ article.titre }}</span>
+</nav>
+
+<div class="product-page">
+  <div class="product-layout">
+
+    <section class="product-gallery" aria-label="Photos">
+      {% set main_image = (image_files[0] if image_files and image_files|length > 0 else None) %}
+      {% if main_image %}
+        <img id="pdMain" class="pd-main" src="{{ url_for('static', filename=main_image) }}" alt="Photo de {{ article.titre }}">
+      {% else %}
+        <div class="pd-main pd-placeholder">Aucune image</div>
+      {% endif %}
+
+      {% if image_files and image_files|length > 1 %}
+      <div class="pd-thumbs" aria-label="Miniatures">
+        {% for f in image_files %}
+          <button type="button" class="pd-thumb {% if loop.index0 == 0 %}is-active{% endif %}" data-src="{{ url_for('static', filename=f) }}" aria-label="Voir la photo {{ loop.index }}">
+            <img src="{{ url_for('static', filename=f) }}" alt="Miniature {{ loop.index }}">
+          </button>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </section>
+
+    <aside class="product-side" aria-label="Détails">
+      <div class="product-card">
+
+        <form class="favorite-form" method="post" action="{{ url_for('toggle_favorite', article_id=article_id) }}">
+          <input type="hidden" name="next" value="{{ request.path }}">
+          <button
+            class="favorite detail-fav {% if is_favorite %}is-active{% endif %}"
+            aria-label="{% if is_favorite %}Retirer des favoris{% else %}Ajouter aux favoris{% endif %}"
+            type="submit"
+          >
+            {% if is_favorite %}♥{% else %}♡{% endif %}
+          </button>
+        </form>
+
+        <h1 class="pd-title">{{ article.titre }}</h1>
+        <div class="pd-price">{{ article.prix }} €</div>
+
+        <dl class="pd-meta">
+          <div>
+            <dt>Catégorie</dt>
+            <dd>{{ article.categorie }}</dd>
+          </div>
+        </dl>
+
+        {% if article.description %}
+          <p class="pd-desc">{{ article.description }}</p>
+        {% endif %}
+
+        <div class="pd-actions">
+          <form method="post" action="{{ url_for('cart_add', article_id=article_id) }}">
+            <input type="hidden" name="next" value="{{ request.path }}">
+            <button class="btn-primary" type="submit">Ajouter au panier</button>
+          </form>
+
+          <a class="btn-secondary btn-link" href="{{ url_for('catalogue') }}">Retour</a>
+        </div>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<script>
+  (function () {
+    var main = document.getElementById('pdMain');
+    if (!main) return;
+    var thumbs = document.querySelectorAll('.pd-thumb');
+    if (!thumbs || thumbs.length === 0) return;
+    thumbs.forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var src = btn.getAttribute('data-src');
+        if (!src) return;
+        main.setAttribute('src', src);
+        thumbs.forEach(function (b) { b.classList.remove('is-active'); });
+        btn.classList.add('is-active');
+      });
+    });
+  })();
+</script>
+{% endblock %}

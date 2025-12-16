@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Paiement par carte</h2>
+<p class="subtitle">Saisis les informations de ta carte pour finaliser l’achat.</p>
+
+{% if errors and errors|length > 0 %}
+  <div class="flash flash-error">
+    <ul>
+      {% for e in errors %}<li>{{ e }}</li>{% endfor %}
+    </ul>
+  </div>
+{% endif %}
+
+<div class="card-pay">
+  <div class="summary">
+    <h3>Récapitulatif</h3>
+    <ul class="summary-list">
+      {% for it in items %}
+      <li>
+        <span>{{ it.article.titre }} × {{ it.qty }}</span>
+        <span>{{ '%.2f' % (it.line_total_cents / 100) }} €</span>
+      </li>
+      {% endfor %}
+      <li class="summary-total">
+        <strong>Total</strong>
+        <strong>{{ '%.2f' % (total_cents / 100) }} €</strong>
+      </li>
+    </ul>
+  </div>
+
+  <div class="brand-badges">
+    <span class="badge visa" aria-label="Visa">
+      <svg viewBox="0 0 48 16" aria-hidden="true"><rect width="48" height="16" rx="3" fill="#1a1f71"/><text x="24" y="11" fill="#fff" font-family="Inter,system-ui,sans-serif" font-size="9" font-weight="800" text-anchor="middle">VISA</text></svg>
+    </span>
+    <span class="badge mc" aria-label="Mastercard">
+      <svg viewBox="0 0 48 16" aria-hidden="true"><rect width="48" height="16" rx="3" fill="#000"/><circle cx="20" cy="8" r="5" fill="#eb001b"/><circle cx="28" cy="8" r="5" fill="#f79e1b"/></svg>
+    </span>
+  </div>
+
+  <form method="post" class="pay-form js-important" novalidate>
+    <div class="form-row">
+      <label for="card_name">Titulaire</label>
+      <input id="card_name" name="card_name" type="text" required value="{{ form.card_name }}" placeholder="Prénom NOM">
+    </div>
+    <div class="form-row">
+      <label for="card_number">Numéro de carte</label>
+      <input id="card_number" name="card_number" type="text" inputmode="numeric" autocomplete="cc-number" required value="{{ form.card_number }}" placeholder="4111 1111 1111 1111">
+      <small>Visa ou Mastercard. Vérification Luhn.</small>
+    </div>
+    <div class="form-grid">
+      <div class="form-row">
+        <label for="exp">Expiration (MM/YY)</label>
+        <input id="exp" name="exp" type="text" inputmode="numeric" autocomplete="cc-exp" required value="{{ form.exp }}" placeholder="08/28">
+      </div>
+      <div class="form-row">
+        <label for="cvc">CVC</label>
+        <input id="cvc" name="cvc" type="text" inputmode="numeric" autocomplete="cc-csc" required value="{{ form.cvc }}" placeholder="123" maxlength="3">
+      </div>
+    </div>
+    <div class="form-actions">
+      <a class="btn-secondary btn-link" href="{{ url_for('panier') }}">Retour au panier</a>
+      <button class="btn-primary" type="submit">Payer {{ '%.2f' % (total_cents / 100) }} €</button>
+    </div>
+  </form>
+</div>
+
+<style>
+  .card-pay{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+  @media (max-width: 900px){.card-pay{grid-template-columns:1fr}}
+  .summary{background:#fafafa;border:1px solid #eee;border-radius:12px;padding:16px}
+  .summary-list{list-style:none;padding:0;margin:0}
+  .summary-list li{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px dashed #eee}
+  .summary-list li:last-child{border-bottom:0}
+  .summary-total{font-size:1.06rem}
+  .brand-badges{display:flex;gap:8px;margin-bottom:8px}
+  .badge svg{height:18px;width:auto;display:block;border-radius:4px}
+  .pay-form .form-row{display:flex;flex-direction:column;margin-bottom:12px}
+  .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .form-actions{display:flex;justify-content:space-between;align-items:center;margin-top:8px}
+</style>
+{% endblock %}

@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Paiement confirmé</h2>
+<p class="subtitle">Merci ! Ton paiement a été reçu.</p>
+
+<div class="empty">
+    {% if order_id %}
+        <p>Commande <strong>#{{ order_id }}</strong> confirmée.</p>
+    {% else %}
+        <p>Commande confirmée.</p>
+    {% endif %}
+
+    <a class="btn-primary btn-link" href="{{ url_for('orders') }}">Voir mes achats</a>
+    <a class="btn-secondary btn-link" href="{{ url_for('catalogue') }}">Retour au catalogue</a>
+</div>
+{% endblock %}

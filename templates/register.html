@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="auth">
+    <div class="auth-card">
+        <h2>Créer un compte</h2>
+        <p class="subtitle">Rejoins Collector.shop en 30 secondes.</p>
+
+        <form class="form js-important" method="post" action="{{ url_for('register') }}">
+            <div class="form-grid">
+                <label>
+                    <span>Prénom</span>
+                    <input name="first_name" type="text" placeholder="Salih" value="{{ (form.get('first_name') if form else '') }}" required>
+                </label>
+
+                <label>
+                    <span>Nom</span>
+                    <input name="last_name" type="text" placeholder="Alainceur" value="{{ (form.get('last_name') if form else '') }}" required>
+                </label>
+            </div>
+
+            <label>
+                <span>Profil</span>
+                <select name="role" required>
+                    <option value="" disabled {% if not form or not form.get('role') %}selected{% endif %}>Choisir…</option>
+                    <option value="acheteur" {% if form and form.get('role') == 'acheteur' %}selected{% endif %}>Acheteur</option>
+                    <option value="vendeur" {% if form and form.get('role') == 'vendeur' %}selected{% endif %}>Vendeur</option>
+                </select>
+            </label>
+
+            <label>
+                <span>Email</span>
+                <input name="email" type="email" placeholder="toi@email.com" value="{{ (form.get('email') if form else '') }}" required>
+            </label>
+
+            <label>
+                <span>Mot de passe</span>
+                <input name="password" type="password" placeholder="••••••••" required>
+            </label>
+
+            <label>
+                <span>Confirmer le mot de passe</span>
+                <input name="password2" type="password" placeholder="••••••••" required>
+            </label>
+
+            <div class="captcha">
+                <div class="captcha-q">
+                    <span class="captcha-label">Captcha</span>
+                    <span class="captcha-question">{{ captcha_question }}</span>
+                </div>
+                <label>
+                    <span>Résultat</span>
+                    <input name="captcha" inputmode="numeric" placeholder="Réponse" required>
+                </label>
+            </div>
+
+            <button class="btn-primary" type="submit">S’inscrire</button>
+        </form>
+
+        <p class="auth-foot">
+            Déjà un compte ? <a href="{{ url_for('login') }}">Se connecter</a>
+        </p>
+    </div>
+</section>
+{% endblock %}

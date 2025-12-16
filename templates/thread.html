@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>{{ conv.subject or 'Conversation' }}</h2>
+<div class="thread">
+  <div class="msgs">
+    {% for m in messages %}
+      <div class="msg {% if m.sender_id == uid %}mine{% endif %}">
+        <div class="bubble">
+          <div class="meta">{{ m.sender_email }} — {{ m.created_at }}</div>
+          <div class="body">{{ m.body }}</div>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+  <form method="post" class="composer">
+    <textarea name="body" rows="3" placeholder="Écrire un message..." required></textarea>
+    <button class="btn-primary" type="submit">Envoyer</button>
+  </form>
+</div>
+<style>
+.thread{display:grid;gap:12px}
+.msgs{display:grid;gap:8px}
+.msg{display:flex}
+.msg.mine{justify-content:flex-end}
+.bubble{max-width:70%;background:rgba(255,255,255,0.8);border:1px solid rgba(11,27,31,0.1);border-radius:14px;padding:10px}
+.msg.mine .bubble{background:linear-gradient(135deg,var(--brand-1),var(--brand-2));color:#fff;border:none}
+.meta{font-size:.8rem;opacity:.7;margin-bottom:4px}
+.body{white-space:pre-wrap}
+.composer{display:grid;gap:8px}
+.composer textarea{border-radius:12px;border:1px solid rgba(11,27,31,0.14);padding:10px;background:rgba(255,255,255,0.78)}
+</style>
+{% endblock %}

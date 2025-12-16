@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Mon panier</h2>
+<p class="subtitle">Vérifie tes articles avant l’achat.</p>
+
+{% if not items %}
+    <div class="empty">
+        <p>Ton panier est vide.</p>
+        <a class="btn-secondary btn-link" href="{{ url_for('catalogue') }}">Voir le catalogue</a>
+    </div>
+{% else %}
+    <div class="cart">
+        {% for it in items %}
+            <div class="cart-item">
+                {% set imgfile = it.article.image %}
+                {% set static_path = imgfile if '/' in imgfile else 'images/' ~ imgfile %}
+                <img class="cart-img" src="{{ url_for('static', filename=static_path) }}" alt="{{ it.article.titre }}">
+
+                <div class="cart-info">
+                    <div class="cart-title">{{ it.article.titre }}</div>
+                    <div class="cart-meta">{{ '%.2f' % (it.price_cents / 100) }} €</div>
+                    <div class="cart-qty">Quantité: <strong>{{ it.qty }}</strong></div>
+                </div>
+
+                <div class="cart-right">
+                    <div class="cart-line-total">{{ '%.2f' % (it.line_total_cents / 100) }} €</div>
+                    <form method="post" action="{{ url_for('cart_remove', article_id=it.article_id) }}">
+                        <button class="btn-secondary" type="submit">Retirer</button>
+                    </form>
+                </div>
+            </div>
+        {% endfor %}
+
+        <div class="cart-summary">
+            <div class="cart-total">
+                Total: <span>{{ '%.2f' % (total_cents / 100) }} €</span>
+            </div>
+            <div class="pay-actions">
+                <form method="get" action="{{ url_for('card_payment') }}">
+                    <button class="btn-primary" type="submit">Payer maintenant</button>
+                </form>
+            </div>
+        </div>
+    </div>
+{% endif %}
+{% endblock %}

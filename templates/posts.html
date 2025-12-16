@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Annonces</h2>
+<p class="subtitle">Les annonces publiées par les vendeurs.</p>
+
+{% if not posts or posts|length == 0 %}
+  <p>Aucune annonce pour le moment.</p>
+{% else %}
+<div class="catalogue">
+  {% for p in posts %}
+  <div class="card">
+    {% if p.image_path %}
+      <img class="product-img" src="{{ url_for('static', filename=p.image_path) }}" alt="{{ p.title }}">
+    {% endif %}
+    <h3>{{ p.title }}</h3>
+    <p class="prix">{{ '%.2f' % (p.price_cents / 100) }} €</p>
+    <p class="muted" style="font-size:.9rem">par {{ p.seller }}</p>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+{% endblock %}

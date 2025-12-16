@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Nouvelle annonce</h2>
+<p class="subtitle">Publie un objet à vendre (photo requise).</p>
+
+{% if errors and errors|length > 0 %}
+  <div class="flash flash-error">
+    <ul>
+      {% for e in errors %}<li>{{ e }}</li>{% endfor %}
+    </ul>
+  </div>
+{% endif %}
+
+<form method="post" enctype="multipart/form-data" class="form js-important" style="max-width:520px">
+  <label>
+    <span>Titre</span>
+    <input type="text" name="title" value="{{ form.title }}" required>
+  </label>
+  <label>
+    <span>Description</span>
+    <textarea name="description" rows="4">{{ form.description }}</textarea>
+  </label>
+  <label>
+    <span>Prix (€)</span>
+    <input type="text" name="price" value="{{ form.price }}" placeholder="99.90" required>
+  </label>
+  <label>
+    <span>Photo</span>
+    <input type="file" name="photo" accept="image/png,image/jpeg,image/webp" required>
+  </label>
+  <div class="form-actions">
+    <a class="btn-secondary btn-link" href="{{ url_for('catalogue') }}">Annuler</a>
+    <button class="btn-primary" type="submit">Publier</button>
+  </div>
+</form>
+{% endblock %}

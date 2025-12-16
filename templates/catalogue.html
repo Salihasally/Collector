@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="hero-lite" style="background-image: url('{{ url_for('static', filename=hero_bg or 'images/banner.jpg') }}'); background-position:center; background-size:cover; background-repeat:no-repeat;">
+  <div class="hero-card">
+    <h2>Prêt à acheter des pièces uniques ?</h2>
+    <p class="muted">Vends facilement, achète malin.</p>
+    <div class="hero-actions">
+      <a class="btn-primary btn-link" href="{{ url_for('seller_new_post') }}">Commencer à vendre</a>
+      <a class="btn-secondary btn-link" href="{{ url_for('catalogue', cat='annonces') }}">Découvrir</a>
+    </div>
+  </div>
+</div>
+
+<div class="subnav">
+  {% for c in categories %}
+    <a class="chip {% if selected_cat==c|lower %}is-active{% endif %}" href="{{ url_for('catalogue', cat=c|lower) }}">{{ c }}</a>
+  {% endfor %}
+</div>
+
+<div class="catalogue">
+  {% for item in items %}
+    <div class="card">
+
+      {% if item.type == 'article' %}
+        <!-- FAVORI (articles fixes uniquement) -->
+        <form class="favorite-form" method="post" action="{{ url_for('toggle_favorite', article_id=item.id) }}">
+          <input type="hidden" name="next" value="{{ request.path }}">
+          <button
+            class="favorite {% if item.id in favorite_ids %}is-active{% endif %}"
+            aria-label="{% if item.id in favorite_ids %}Retirer des favoris{% else %}Ajouter aux favoris{% endif %}"
+            type="submit"
+          >
+            {% if item.id in favorite_ids %}♥{% else %}♡{% endif %}
+          </button>
+        </form>
+      {% endif %}
+
+      <a class="card-hit" href="{{ item.detail_url }}" aria-label="Voir {{ item.title }}">
+        {% if item.image %}
+          <img class="product-img" src="{{ url_for('static', filename=item.image) }}" alt="{{ item.title }}">
+        {% endif %}
+        <h3>{{ item.title }}</h3>
+        <p class="prix">{{ item.price }}</p>
+      </a>
+
+      <div class="actions">
+        <form method="post" action="{{ url_for('cart_add', article_id=item.cart_id) }}">
+          <input type="hidden" name="next" value="{{ request.path }}">
+          <button class="btn-primary" type="submit">Ajouter au panier</button>
+        </form>
+
+      </div>
+
+    </div>
+  {% endfor %}
+</div>
+{% endblock %}

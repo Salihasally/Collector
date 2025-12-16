@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Mes favoris</h2>
+<p class="subtitle">Retrouve tes articles enregistrés.</p>
+
+{% if not fav_articles %}
+    <div class="empty">
+        <p>Tu n’as pas encore de favoris.</p>
+        <a class="btn-secondary btn-link" href="{{ url_for('catalogue') }}">Voir le catalogue</a>
+    </div>
+{% else %}
+    <div class="catalogue">
+        {% for id, article in fav_articles %}
+        <div class="card">
+            <form class="favorite-form" method="post" action="{{ url_for('toggle_favorite', article_id=id) }}">
+                <input type="hidden" name="next" value="{{ request.path }}">
+                <button class="favorite is-active" aria-label="Retirer des favoris" type="submit">♥</button>
+            </form>
+
+            <img
+                src="{{ url_for('static', filename='images/' ~ article.image) }}"
+                alt="Photo de {{ article.titre }}"
+                class="product-img"
+            >
+
+            <h3>{{ article.titre }}</h3>
+            <p class="prix">{{ article.prix }} €</p>
+
+            <div class="actions">
+                <a class="btn-secondary btn-link" href="{{ url_for('article_detail', article_id=id) }}">Voir</a>
+                <form method="post" action="{{ url_for('cart_add', article_id=id) }}">
+                    <input type="hidden" name="next" value="{{ request.path }}">
+                    <button class="btn-primary" type="submit">Ajouter au panier</button>
+                </form>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+{% endif %}
+{% endblock %}

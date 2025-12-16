@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="auth">
+    <div class="auth-card">
+        <h2>Vérification</h2>
+        <p class="subtitle">Entre le code à 6 chiffres envoyé à <strong>{{ email }}</strong>.</p>
+
+        <form class="form js-important" method="post" action="{{ url_for('verify_2fa') }}">
+            <label>
+                <span>Code (6 chiffres)</span>
+                <input name="code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" placeholder="000000" required>
+            </label>
+
+            <button class="btn-primary" type="submit">Valider</button>
+        </form>
+
+        <p class="auth-foot">
+            Pas reçu ? <a href="{{ url_for('resend_2fa') }}">Renvoyer le code</a>
+        </p>
+    </div>
+</section>
+{% endblock %}

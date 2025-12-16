@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Collector.shop</title>
+
+    <!-- Google Font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css', v='20251216') }}">
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/logo.png') }}">
+</head>
+<body>
+
+<header class="header">
+    <a class="brand" href="{{ url_for('catalogue') }}" aria-label="Accueil Collector.shop">
+        <span class="brand-logo">
+            <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Collector.shop logo" />
+        </span>
+    </a>
+
+    <form class="search" method="get" action="{{ url_for('catalogue') }}">
+        <input class="search-input" type="search" name="q" placeholder="Rechercher des articles" value="{{ search_q or '' }}">
+        <button class="search-btn" type="submit">🔍</button>
+    </form>
+
+    <nav class="nav">
+        <a class="nav-link" href="{{ url_for('catalogue') }}">Catalogue</a>
+
+        {% if session.get('user_id') %}
+            <div class="nav-divider" aria-hidden="true"></div>
+            {% if is_admin %}
+                <a class="nav-link" href="{{ url_for('admin_dashboard') }}">Admin</a>
+            {% endif %}
+            {% if user_role == 'vendeur' %}
+                <a class="nav-link" href="{{ url_for('seller_new_post') }}">Vendre</a>
+            {% endif %}
+            <a class="nav-link" href="{{ url_for('favoris') }}">Favoris</a>
+            <a class="nav-link" href="{{ url_for('panier') }}">
+                Panier
+                {% if cart_count and cart_count > 0 %}
+                    <span class="badge">{{ cart_count }}</span>
+                {% endif %}
+            </a>
+            <a class="nav-link" href="{{ url_for('orders') }}">Mes achats</a>
+            <span class="nav-user">{{ session.get('user_email') }}</span>
+            <a class="nav-link" href="{{ url_for('logout') }}">Déconnexion</a>
+        {% else %}
+            <div class="nav-divider" aria-hidden="true"></div>
+            <a class="nav-link" href="{{ url_for('register') }}">S’inscrire</a>
+            <a class="nav-btn" href="{{ url_for('login') }}">Se connecter</a>
+        {% endif %}
+    </nav>
+</header>
+
+<main>
+    <div id="toastContainer" class="toasts" aria-live="polite" aria-atomic="true">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, message in messages %}
+            <div class="toast toast-{{ category }}" role="status">
+              <div class="toast-body">{{ message }}</div>
+              <button class="toast-close" type="button" aria-label="Fermer">×</button>
+            </div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+    </div>
+
+    {% block content %}{% endblock %}
+</main>
+
+<footer class="footer">
+    <p>© 2025 Collector.shop</p>
+</footer>
+
+<div id="globalLoader" class="loader-overlay" aria-hidden="true">
+  <div class="loader-card" role="status" aria-label="Chargement">
+    <div class="spinner" aria-hidden="true"></div>
+    <div class="loader-text">Chargement…</div>
+  </div>
+</div>
+
+<script>
+  (function () {
+    // Toasts
+    var toasts = document.querySelectorAll('.toast');
+    toasts.forEach(function (t) {
+      var close = t.querySelector('.toast-close');
+      var hide = function () {
+        t.classList.add('is-hiding');
+        window.setTimeout(function () {
+          if (t && t.parentNode) t.parentNode.removeChild(t);
+        }, 220);
+      };
+      if (close) close.addEventListener('click', hide);
+      var isError = t.classList.contains('toast-error');
+      window.setTimeout(hide, isError ? 6000 : 3500);
+    });
+
+    // Button click animation
+    document.addEventListener('click', function (e) {
+      var el = e.target;
+      if (!el) return;
+      var btn = el.closest && el.closest('.btn-primary, .btn-secondary, .nav-btn, .search-btn');
+      if (!btn) return;
+      btn.classList.remove('is-clicked');
+      // force reflow to restart animation
+      void btn.offsetWidth;
+      btn.classList.add('is-clicked');
+      window.setTimeout(function () { btn.classList.remove('is-clicked'); }, 220);
+    });
+
+    // Global loader for important forms
+    var overlay = document.getElementById('globalLoader');
+    if (!overlay) return;
+
+    var showLoader = function () {
+      overlay.classList.add('is-visible');
+      overlay.setAttribute('aria-hidden', 'false');
+    };
+
+    var forms = document.querySelectorAll('form.js-important');
+    forms.forEach(function (f) {
+      f.addEventListener('submit', function () {
+        var submit = f.querySelector('button[type="submit"]');
+        if (submit) {
+          submit.disabled = true;
+          submit.classList.add('is-loading');
+        }
+        showLoader();
+      });
+    });
+  })();
+</script>
+
+</body>
+</html>

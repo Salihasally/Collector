@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Admin — Tableau de bord</h2>
+<p class="subtitle">Gère les rôles et visualise les annonces vendeurs.</p>
+
+<h3>Utilisateurs</h3>
+<p class="subtitle">Change le rôle puis enregistre. Tu restes sur cette page.</p>
+<table class="tbl">
+  <thead><tr><th>ID</th><th>Email</th><th>Nom</th><th>Rôle</th><th>Action</th></tr></thead>
+  <tbody>
+    {% for u in users %}
+      <tr>
+        <td>{{ u.id }}</td>
+        <td>{{ u.email }}</td>
+        <td>{{ (u.first_name or '') }} {{ (u.last_name or '') }}</td>
+        <td>
+          <form method="post" class="js-important" action="{{ url_for('admin_update_user_role', user_id=u.id) }}" style="display:flex; gap:10px; align-items:center; margin:0">
+            <select name="role" required>
+              <option value="acheteur" {% if u.role == 'acheteur' %}selected{% endif %}>acheteur</option>
+              <option value="vendeur" {% if u.role == 'vendeur' %}selected{% endif %}>vendeur</option>
+              <option value="admin" {% if u.role == 'admin' %}selected{% endif %}>admin</option>
+            </select>
+        </td>
+        <td>
+            <button class="btn-primary" type="submit">Enregistrer</button>
+          </form>
+        </td>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<h3>Statistiques</h3>
+<div class="stats">
+  <div class="kpi"><div class="kpi-num">{{ stats.total_orders }}</div><div class="kpi-label">Commandes</div></div>
+  <div class="kpi"><div class="kpi-num">{{ stats.paid_orders }}</div><div class="kpi-label">Commandes payées</div></div>
+  <div class="kpi"><div class="kpi-num">{{ '%.2f' % (stats.revenue_cents / 100) }} €</div><div class="kpi-label">Revenu</div></div>
+</div>
+
+<h3>Top ventes</h3>
+<table class="tbl">
+  <thead><tr><th>Article</th><th>Qté</th><th>Montant</th></tr></thead>
+  <tbody>
+    {% for it in stats.top_items %}
+      <tr>
+        <td>{{ it.title }}</td>
+        <td>{{ it.q }}</td>
+        <td>{{ '%.2f' % (it.amount / 100) }} €</td>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<h3>Graphiques</h3>
+<div class="charts">
+  <div class="chart">
+    <canvas id="revChart" height="120"></canvas>
+  </div>
+  <div class="chart">
+    <canvas id="ordersChart" height="120"></canvas>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+  const labels = {{ stats.chart.labels|tojson }};
+  const revenue = {{ stats.chart.revenue|tojson }}; // en €
+  const paid = {{ stats.chart.paid|tojson }};
+  const total = {{ stats.chart.total|tojson }};
+
+  const ctx1 = document.getElementById('revChart');
+  new Chart(ctx1, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Revenu (€/jour)',
+        data: revenue,
+        borderColor: '#2563eb',
+        backgroundColor: 'rgba(37, 99, 235, 0.2)',
+        tension: 0.25,
+        fill: true,
+      }]
+    },
+    options: {
+      plugins: { legend: { display: true } },
+      scales: { y: { beginAtZero: true } }
+    }
+  });
+
+  const ctx2 = document.getElementById('ordersChart');
+  new Chart(ctx2, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Commandes payées',
+          data: paid,
+          backgroundColor: 'rgba(16, 185, 129, 0.6)'
+        },
+        {
+          label: 'Commandes totales',
+          data: total,
+          backgroundColor: 'rgba(107, 114, 128, 0.4)'
+        }
+      ]
+    },
+    options: {
+      plugins: { legend: { display: true } },
+      scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
+    }
+  });
+</script>
+
+<style>
+.tbl{width:100%;border-collapse:separate;border-spacing:0 6px;margin:8px 0}
+.tbl th,.tbl td{padding:10px 12px;background:#fafafa;border:1px solid #eee}
+.tbl th{background:#f5f5f5;text-align:left}
+.tbl tr td:first-child,.tbl tr th:first-child{border-top-left-radius:8px;border-bottom-left-radius:8px}
+.tbl tr td:last-child,.tbl tr th:last-child{border-top-right-radius:8px;border-bottom-right-radius:8px}
+.stats{display:flex;gap:16px;margin:8px 0}
+.kpi{background:#fafafa;border:1px solid #eee;border-radius:10px;padding:12px 16px;min-width:160px}
+.kpi-num{font-weight:800;font-size:1.4rem}
+.kpi-label{opacity:.7}
+.charts{display:grid;grid-template-columns:1fr;gap:16px;margin:10px 0}
+.chart{background:#fafafa;border:1px solid #eee;border-radius:10px;padding:12px}
+</style>
+{% endblock %}

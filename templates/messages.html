@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Messages</h2>
+<div class="list">
+  {% for c in convs %}
+    <a class="row" href="{{ url_for('messages_thread', conv_id=c.id) }}">
+      <div class="row-main">
+        <div class="row-title">{{ c.subject or 'Conversation' }}</div>
+        <div class="row-sub">{{ c.buyer_email }} ↔ {{ c.seller_email }}</div>
+      </div>
+      <div class="row-meta">
+        {% if c.unread and c.unread > 0 %}<span class="badge">{{ c.unread }}</span>{% endif %}
+      </div>
+    </a>
+  {% else %}
+    <p>Pas de conversations pour l’instant.</p>
+  {% endfor %}
+</div>
+<style>
+.list{display:grid;gap:10px}
+.row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px;border-radius:16px;background:rgba(255,255,255,0.6);border:1px solid rgba(11,27,31,0.1);text-decoration:none}
+.row:hover{background:rgba(255,255,255,0.8);text-decoration:none}
+.row-title{font-weight:800}
+.row-sub{color:var(--muted);font-weight:600;font-size:.95rem}
+</style>
+{% endblock %}

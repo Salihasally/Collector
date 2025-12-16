@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Paiement annulé</h2>
+<p class="subtitle">Aucun paiement n’a été effectué.</p>
+
+<div class="empty">
+    {% if order_id %}
+        <p>Commande en attente: <strong>#{{ order_id }}</strong>.</p>
+    {% endif %}
+
+    <a class="btn-primary btn-link" href="{{ url_for('panier') }}">Retour au panier</a>
+    <a class="btn-secondary btn-link" href="{{ url_for('catalogue') }}">Continuer à acheter</a>
+</div>
+{% endblock %}
