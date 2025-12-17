@@ -12,6 +12,7 @@ from flask import Flask, render_template, abort, request, redirect, url_for, fla
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 
+
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 SELLER_OFFSET = 100000  # article_id virtuel = SELLER_OFFSET + post.id
 
@@ -391,6 +392,10 @@ def send_email(to_email: str, subject: str, body: str) -> bool:
 
     Variables requises:
       SMTP_HOST, SMTP_PORT (default 587), SMTP_USER, SMTP_PASSWORD, SMTP_FROM
+
+    Options:
+      SMTP_USE_SSL=1  -> utilise SMTP_SSL (souvent port 465)
+      SMTP_STARTTLS=0 -> désactive STARTTLS (par défaut activé si pas SSL)
     """
     host = os.environ.get("SMTP_HOST")
     user = os.environ.get("SMTP_USER")
@@ -398,7 +403,30 @@ def send_email(to_email: str, subject: str, body: str) -> bool:
     from_email = os.environ.get("SMTP_FROM") or user
     port = int(os.environ.get("SMTP_PORT", "587"))
 
-    if not host or not user or not password or not from_email:
+    smtp_use_ssl = (os.environ.get("SMTP_USE_SSL") or "").strip().lower() in {"1", "true", "yes", "on"}
+    smtp_starttls_env = (os.environ.get("SMTP_STARTTLS") or "").strip().lower()
+    smtp_starttls = True if smtp_starttls_env == "" else smtp_starttls_env in {"1", "true", "yes", "on"}
+
+    # Heuristique: si on est sur 465, on part sur SSL sauf si l'utilisateur a explicitement demandé STARTTLS
+    if port == 465 and smtp_starttls_env == "":
+        smtp_use_ssl = True
+
+    missing = []
+    if not host:
+        missing.append("SMTP_HOST")
+    if not user:
+        missing.append("SMTP_USER")
+    if not password:
+        missing.append("SMTP_PASSWORD")
+    if not from_email:
+        missing.append("SMTP_FROM")
+
+    if missing:
+        # Log utile pour debug (sans exposer le mot de passe)
+        try:
+            app.logger.warning("SMTP not configured: missing %s", ", ".join(missing))
+        except Exception:
+            pass
         return False
 
     msg = EmailMessage()
@@ -408,14 +436,39 @@ def send_email(to_email: str, subject: str, body: str) -> bool:
     msg.set_content(body.strip())
 
     context = ssl.create_default_context()
-    with smtplib.SMTP(host, port) as server:
-        server.ehlo()
-        server.starttls(context=context)
-        server.ehlo()
-        server.login(user, password)
-        server.send_message(msg)
 
-    return True
+    try:
+        if smtp_use_ssl:
+            with smtplib.SMTP_SSL(host, port, context=context) as server:
+                server.ehlo()
+                server.login(user, password)
+                server.send_message(msg)
+            return True
+
+        with smtplib.SMTP(host, port) as server:
+            server.ehlo()
+            if smtp_starttls:
+                server.starttls(context=context)
+                server.ehlo()
+            server.login(user, password)
+            server.send_message(msg)
+        return True
+    except Exception:
+        # Traceback complet côté serveur Flask
+        try:
+            app.logger.exception(
+                "SMTP send failed (host=%s port=%s ssl=%s starttls=%s user=%s from=%s to=%s)",
+                host,
+                port,
+                smtp_use_ssl,
+                smtp_starttls,
+                user,
+                from_email,
+                to_email,
+            )
+        except Exception:
+            pass
+        return False
 
 
 def send_otp_email(to_email: str, code: str) -> bool:
@@ -723,13 +776,17 @@ def login():
         try:
             sent = send_otp_email(user["email"], code)
         except Exception:
+            try:
+                app.logger.exception("Failed to send OTP email to %s", user["email"])
+            except Exception:
+                pass
             sent = False
 
         if sent:
             flash("Code de vérification envoyé par email.", "success")
             return redirect(url_for("verify_2fa"))
         else:
-            flash("Impossible d'envoyer l'email de vérification (SMTP non configuré).", "error")
+            flash("Impossible d'envoyer l'email de vérification (vérifie la config SMTP et les logs serveur).", "error")
             return redirect(url_for("login"))
 
     # GET
@@ -798,13 +855,17 @@ def resend_2fa():
     try:
         sent = send_otp_email(email, code)
     except Exception:
+        try:
+            app.logger.exception("Failed to resend OTP email to %s", email)
+        except Exception:
+            pass
         sent = False
 
     if sent:
         flash("Nouveau code envoyé par email.", "success")
         return redirect(url_for("verify_2fa"))
     else:
-        flash("Impossible d'envoyer l'email (SMTP non configuré).", "error")
+        flash("Impossible d'envoyer l'email (vérifie la config SMTP et les logs serveur).", "error")
         return redirect(url_for("login"))
 
 
