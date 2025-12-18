@@ -4,7 +4,7 @@
 :root {
     /* palette “marketplace” plus pro (teal + bleu) */
     --bg-1: #f5fbff;
-    --bg-2: #f5fffb;
+    --bg-2: #f4fffb; /*c'était 5*/
 
     --text: #0b1b1f;
     --muted: rgba(11, 27, 31, 0.62);
