@@ -25,23 +25,28 @@ COPY --from=builder /install /usr/local
 # Copy application source
 COPY . .
 
-# Make entrypoint executable
-RUN chmod +x /app/entrypoint.sh
+# Fix Windows CRLF line endings on entrypoint.sh (breaks bash on Linux)
+# and make it executable
+RUN apt-get update && apt-get install -y --no-install-recommends dos2unix \
+ && dos2unix /app/entrypoint.sh \
+ && chmod +x /app/entrypoint.sh \
+ && apt-get remove -y dos2unix && apt-get autoremove -y \
+ && rm -rf /var/lib/apt/lists/*
 
 # Pre-create writable directories
-# /app/data  → SQLite database (mount a volume here for persistence)
+# /tmp/data  → SQLite database (/tmp is always writable on Cloud Run)
 # /app/static/uploads → seller image uploads
-RUN mkdir -p /app/static/uploads /app/data \
- && chown -R appuser:appgroup /app
+RUN mkdir -p /app/static/uploads /tmp/data \
+ && chown -R appuser:appgroup /app /tmp/data
 
 USER appuser
 
-# Cloud Run will inject PORT automatically; we default to 8000
+# Cloud Run injects PORT automatically; DATABASE uses /tmp (always writable)
 ENV PORT=8000 \
     WORKERS=2 \
     TIMEOUT=120 \
     APP_ENV=production \
-    DATABASE=/app/data/collectorshop.sqlite3
+    DATABASE=/tmp/data/collectorshop.sqlite3
 
 EXPOSE 8000
 

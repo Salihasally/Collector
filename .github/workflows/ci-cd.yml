@@ -157,6 +157,7 @@ jobs:
             SMTP_USER=${{ secrets.SMTP_USER }}
             SMTP_PASSWORD=${{ secrets.SMTP_PASSWORD }}
             SMTP_FROM=${{ secrets.SMTP_FROM }}
+            DATABASE=/tmp/data/collectorshop.sqlite3
 
       - name: Print deployed URL
         run: echo "✅ Deployed → ${{ steps.deploy.outputs.url }}"
