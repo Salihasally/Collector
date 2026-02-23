@@ -1,3 +1,20 @@
+# ============================================================
+# CI/CD – Collector.shop
+# Build → Test → Push to Artifact Registry → Deploy to Cloud Run
+# ============================================================
+#
+# Required GitHub Secrets:
+#   GCP_PROJECT_ID         e.g. collector-shop-123456
+#   GCP_REGION             e.g. europe-west1
+#   GCP_SA_KEY             Base64-encoded service account JSON key
+#                          (see setup guide for how to generate)
+#   GCP_CLOUDRUN_SERVICE   e.g. collector-shop
+#
+# Optional Secrets (injected as Cloud Run env vars):
+#   SECRET_KEY             Flask secret key
+#   ADMIN_EMAIL            Admin account email
+#   SMTP_HOST / SMTP_PORT / SMTP_USER / SMTP_PASSWORD / SMTP_FROM
+# ============================================================
 
 name: CI / CD
 
@@ -9,12 +26,15 @@ on:
 
 env:
   IMAGE_NAME: collector-shop
+  # Artifact Registry repository name (created in setup)
   AR_REPO: collector-shop-repo
 
 jobs:
- 
+  # ──────────────────────────────────────────────────────────
+  # 1. Run unit & integration tests
+  # ──────────────────────────────────────────────────────────
   test:
-    name:  Tests
+    name: 🧪 Tests
     runs-on: ubuntu-latest
 
     steps:
@@ -44,9 +64,11 @@ jobs:
           path: coverage.xml
           retention-days: 14
 
-  
+  # ──────────────────────────────────────────────────────────
+  # 2. Build & push Docker image to Artifact Registry
+  # ──────────────────────────────────────────────────────────
   build-and-push:
-    name:  Build & Push
+    name: 🐳 Build & Push
     needs: test
     runs-on: ubuntu-latest
     if: github.event_name == 'push'
@@ -74,15 +96,18 @@ jobs:
         with:
           context: .
           push: true
+          # Build both a sha tag and latest — deploy job uses :latest
           tags: |
             ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ env.AR_REPO }}/${{ env.IMAGE_NAME }}:sha-${{ github.sha }}
             ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ env.AR_REPO }}/${{ env.IMAGE_NAME }}:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  
+  # ──────────────────────────────────────────────────────────
+  # 3. Deploy to Cloud Run
+  # ──────────────────────────────────────────────────────────
   deploy:
-    name:  Deploy to Cloud Run
+    name: 🚀 Deploy to Cloud Run
     needs: build-and-push
     runs-on: ubuntu-latest
     environment:
@@ -98,8 +123,18 @@ jobs:
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
 
+      # Debug — confirm secrets are populated (empty secrets appear as empty string, not ***)
+      - name: Debug — check secrets are set
+        run: |
+          echo "GCP_PROJECT_ID is set:  ${{ secrets.GCP_PROJECT_ID != '' }}"
+          echo "GCP_REGION is set:      ${{ secrets.GCP_REGION != '' }}"
+          echo "GCP_SA_KEY is set:      ${{ secrets.GCP_SA_KEY != '' }}"
+          echo "GCP_CLOUDRUN_SERVICE:   ${{ secrets.GCP_CLOUDRUN_SERVICE != '' }}"
+          echo "SECRET_KEY is set:      ${{ secrets.SECRET_KEY != '' }}"
+          echo "Image will be: ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ env.AR_REPO }}/${{ env.IMAGE_NAME }}:sha-${{ github.sha }}"
+
       # Build the image path directly here using secrets — avoids
-      
+      # cross-job output propagation issues
       - name: Resolve image name
         id: image
         run: |
@@ -124,7 +159,7 @@ jobs:
             SMTP_FROM=${{ secrets.SMTP_FROM }}
 
       - name: Print deployed URL
-        run: echo " Deployed → ${{ steps.deploy.outputs.url }}"
+        run: echo "✅ Deployed → ${{ steps.deploy.outputs.url }}"
 
       - name: Health check
         run: |
@@ -134,10 +169,10 @@ jobs:
             STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$URL")
             echo "Attempt $i — HTTP status: $STATUS"
             if [ "$STATUS" = "200" ]; then
-              echo " Health check passed"
+              echo "✅ Health check passed"
               exit 0
             fi
             sleep 10
           done
-          echo " Health check failed after 3 attempts"
+          echo "❌ Health check failed after 3 attempts"
           exit 1
