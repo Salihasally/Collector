@@ -1041,6 +1041,8 @@ def _cart_items_and_total(uid: int):
 
 
 def _luhn_ok(num: str) -> bool:
+    if not num or len(num) < 8:
+        return False
     s = 0
     alt = False
     for ch in reversed(num):
