@@ -1,0 +1,158 @@
+# ============================================================
+# CI/CD – Collector.shop
+# Build → Test → Push to Artifact Registry → Deploy to Cloud Run
+# ============================================================
+#
+# Required GitHub Secrets:
+#   GCP_PROJECT_ID         e.g. collector-shop-1234567
+#   GCP_REGION             e.g. europe-west1
+#   GCP_SA_KEY             Base64-encoded service account JSON key
+#                          (see setup guide for how to generate)
+#   GCP_CLOUDRUN_SERVICE   e.g. collector-shop
+#
+# Optional Secrets (injected as Cloud Run env vars):
+#   SECRET_KEY             Flask secret key
+#   ADMIN_EMAIL            Admin account email
+#   SMTP_HOST / SMTP_PORT / SMTP_USER / SMTP_PASSWORD / SMTP_FROM
+# ============================================================
+
+name: CI / CD
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+env:
+  IMAGE_NAME: collector-shop
+  AR_REPO: collector-shop-repo
+
+jobs:
+  
+  test:
+    name:  Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-cov
+
+      - name: Run tests
+        run: pytest --tb=short --cov=app --cov-report=xml
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage.xml
+          retention-days: 14
+
+  
+  build-and-push:
+    name:  Build & Push
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+
+    outputs:
+      image_full: ${{ steps.image.outputs.full }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker ${{ secrets.GCP_REGION }}-docker.pkg.dev --quiet
+
+      
+      - name: Compute full image name
+        id: image
+        run: |
+          SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+          FULL="${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ env.AR_REPO }}/${{ env.IMAGE_NAME }}"
+          echo "full=${FULL}:sha-${SHA}" >> "$GITHUB_OUTPUT"
+          echo "latest=${FULL}:latest"   >> "$GITHUB_OUTPUT"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ steps.image.outputs.full }}
+            ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ env.AR_REPO }}/${{ env.IMAGE_NAME }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+
+  deploy:
+    name:  Deploy to Cloud Run
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: ${{ steps.deploy.outputs.url }}
+
+    steps:
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Deploy to Cloud Run
+        id: deploy
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: ${{ secrets.GCP_CLOUDRUN_SERVICE }}
+          region: ${{ secrets.GCP_REGION }}
+          image: ${{ needs.build-and-push.outputs.image_full }}
+          flags: --port=8000 --allow-unauthenticated --min-instances=0 --max-instances=3 --memory=512Mi
+          env_vars: |
+            APP_ENV=production
+            SECRET_KEY=${{ secrets.SECRET_KEY }}
+            ADMIN_EMAIL=${{ secrets.ADMIN_EMAIL }}
+            SMTP_HOST=${{ secrets.SMTP_HOST }}
+            SMTP_PORT=${{ secrets.SMTP_PORT }}
+            SMTP_USER=${{ secrets.SMTP_USER }}
+            SMTP_PASSWORD=${{ secrets.SMTP_PASSWORD }}
+            SMTP_FROM=${{ secrets.SMTP_FROM }}
+
+      - name: Health check
+        run: |
+          URL="${{ steps.deploy.outputs.url }}/catalogue"
+          echo "Checking $URL"
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$URL")
+          echo "HTTP status: $STATUS"
+          if [ "$STATUS" != "200" ]; then
+            echo " Health check failed (status $STATUS)"
+            exit 1
+          fi
+          echo " Deployed → ${{ steps.deploy.outputs.url }}"
