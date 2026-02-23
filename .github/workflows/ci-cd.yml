@@ -1,22 +1,4 @@
-# ============================================================
-# CI/CD – Collector.shop
-# Build → Test → Push to Artifact Registry → Deploy to Cloud Run
-# ============================================================
-#
-# Required GitHub Secrets:
-#   GCP_PROJECT_ID         e.g. collector-shop-1234567
-#   GCP_REGION             e.g. europe-west1
-#   GCP_SA_KEY             Base64-encoded service account JSON key
-#                          (see setup guide for how to generate)
-#   GCP_CLOUDRUN_SERVICE   e.g. collector-shop
-#
-# Optional Secrets (injected as Cloud Run env vars):
-#   SECRET_KEY             Flask secret key
-#   ADMIN_EMAIL            Admin account email
-#   SMTP_HOST / SMTP_PORT / SMTP_USER / SMTP_PASSWORD / SMTP_FROM
-# ============================================================
 
-# GitHub Actions workflow for CI/CD of Collector.shop
 name: CI / CD
 
 on:
@@ -30,7 +12,7 @@ env:
   AR_REPO: collector-shop-repo
 
 jobs:
-  
+ 
   test:
     name:  Tests
     runs-on: ubuntu-latest
@@ -69,9 +51,6 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event_name == 'push'
 
-    outputs:
-      image_full: ${{ steps.image.outputs.full }}
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -87,15 +66,6 @@ jobs:
       - name: Configure Docker for Artifact Registry
         run: gcloud auth configure-docker ${{ secrets.GCP_REGION }}-docker.pkg.dev --quiet
 
-      
-      - name: Compute full image name
-        id: image
-        run: |
-          SHA=$(echo "${{ github.sha }}" | cut -c1-7)
-          FULL="${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ env.AR_REPO }}/${{ env.IMAGE_NAME }}"
-          echo "full=${FULL}:sha-${SHA}" >> "$GITHUB_OUTPUT"
-          echo "latest=${FULL}:latest"   >> "$GITHUB_OUTPUT"
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -105,12 +75,12 @@ jobs:
           context: .
           push: true
           tags: |
-            ${{ steps.image.outputs.full }}
+            ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ env.AR_REPO }}/${{ env.IMAGE_NAME }}:sha-${{ github.sha }}
             ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ env.AR_REPO }}/${{ env.IMAGE_NAME }}:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-
+  
   deploy:
     name:  Deploy to Cloud Run
     needs: build-and-push
@@ -128,13 +98,20 @@ jobs:
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
 
+      # Build the image path directly here using secrets — avoids
+      
+      - name: Resolve image name
+        id: image
+        run: |
+          echo "path=${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ env.AR_REPO }}/${{ env.IMAGE_NAME }}:sha-${{ github.sha }}" >> "$GITHUB_OUTPUT"
+
       - name: Deploy to Cloud Run
         id: deploy
         uses: google-github-actions/deploy-cloudrun@v2
         with:
           service: ${{ secrets.GCP_CLOUDRUN_SERVICE }}
           region: ${{ secrets.GCP_REGION }}
-          image: ${{ needs.build-and-push.outputs.image_full }}
+          image: ${{ steps.image.outputs.path }}
           flags: --port=8000 --allow-unauthenticated --min-instances=0 --max-instances=3 --memory=512Mi
           env_vars: |
             APP_ENV=production
@@ -146,14 +123,21 @@ jobs:
             SMTP_PASSWORD=${{ secrets.SMTP_PASSWORD }}
             SMTP_FROM=${{ secrets.SMTP_FROM }}
 
+      - name: Print deployed URL
+        run: echo " Deployed → ${{ steps.deploy.outputs.url }}"
+
       - name: Health check
         run: |
           URL="${{ steps.deploy.outputs.url }}/catalogue"
           echo "Checking $URL"
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$URL")
-          echo "HTTP status: $STATUS"
-          if [ "$STATUS" != "200" ]; then
-            echo " Health check failed (status $STATUS)"
-            exit 1
-          fi
-          echo " Deployed → ${{ steps.deploy.outputs.url }}"
+          for i in 1 2 3; do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$URL")
+            echo "Attempt $i — HTTP status: $STATUS"
+            if [ "$STATUS" = "200" ]; then
+              echo " Health check passed"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo " Health check failed after 3 attempts"
+          exit 1
