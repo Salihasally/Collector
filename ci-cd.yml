@@ -16,6 +16,7 @@
 #   SMTP_HOST / SMTP_PORT / SMTP_USER / SMTP_PASSWORD / SMTP_FROM
 # ============================================================
 
+# GitHub Actions workflow for CI/CD of Collector.shop
 name: CI / CD
 
 on:
