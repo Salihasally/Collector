@@ -50,8 +50,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install pytest pytest-cov
+          pip install -r requirements-test.txt
 
       - name: Run tests
         run: pytest --tb=short --cov=app --cov-report=xml
@@ -104,11 +103,66 @@ jobs:
           cache-to: type=gha,mode=max
 
   # ──────────────────────────────────────────────────────────
-  # 3. Deploy to Cloud Run
+  # 3. Smoke-test the container before deploying
+  # ──────────────────────────────────────────────────────────
+  smoke-test:
+    name: 🔍 Smoke Test Container
+    needs: build-and-push
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker ${{ secrets.GCP_REGION }}-docker.pkg.dev --quiet
+
+      - name: Pull image
+        run: |
+          docker pull ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ env.AR_REPO }}/${{ env.IMAGE_NAME }}:sha-${{ github.sha }}
+
+      - name: Run container and capture logs
+        run: |
+          # Start container in background
+          docker run -d \
+            --name smoke \
+            -p 8000:8000 \
+            -e PORT=8000 \
+            -e DATABASE=/tmp/data/collectorshop.sqlite3 \
+            -e APP_ENV=production \
+            -e SECRET_KEY=testsecretfortesting \
+            ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ env.AR_REPO }}/${{ env.IMAGE_NAME }}:sha-${{ github.sha }}
+
+          # Wait up to 30s for it to respond
+          echo "Waiting for container to start..."
+          for i in $(seq 1 15); do
+            sleep 2
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/catalogue 2>/dev/null || echo "000")
+            echo "Attempt $i — HTTP $STATUS"
+            if [ "$STATUS" = "200" ]; then
+              echo "✅ Container started successfully"
+              docker stop smoke
+              exit 0
+            fi
+          done
+
+          # Failed — print full logs before exiting
+          echo ""
+          echo "❌ Container did not respond — printing logs:"
+          echo "================================================"
+          docker logs smoke
+          echo "================================================"
+          docker stop smoke || true
+          exit 1
+
+  # ──────────────────────────────────────────────────────────
+  # 4. Deploy to Cloud Run
   # ──────────────────────────────────────────────────────────
   deploy:
     name: 🚀 Deploy to Cloud Run
-    needs: build-and-push
+    needs: smoke-test
     runs-on: ubuntu-latest
     environment:
       name: production
