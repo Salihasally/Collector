@@ -10,9 +10,6 @@ import pytest
 from tests.conftest import _register, _login, _logout
 
 
-# =============================================================================
-# 1. CARD-VALIDATION HELPERS (pure unit tests – no HTTP)
-# =============================================================================
 
 class TestLuhn:
     """Tests for the _luhn_ok helper."""
@@ -174,9 +171,6 @@ class TestCVC:
         assert _valid_cvc(" 123 ") is True
 
 
-# =============================================================================
-# 2. SAFE NEXT URL HELPER
-# =============================================================================
 
 class TestSafeNextUrl:
     def test_valid_internal_path(self):
@@ -199,10 +193,6 @@ class TestSafeNextUrl:
         from app import _safe_next_url
         assert _safe_next_url("") is None
 
-
-# =============================================================================
-# 3. AUTHENTICATION (HTTP)
-# =============================================================================
 
 class TestRegistration:
     def test_get_register_page(self, client):
@@ -314,9 +304,7 @@ class TestLogin:
         assert b"Catalogue" in rv.data or rv.status_code == 200
 
 
-# =============================================================================
-# 4. CATALOGUE & ARTICLES (HTTP)
-# =============================================================================
+
 
 class TestCatalogue:
     def test_catalogue_accessible_anonymously(self, client):
@@ -350,9 +338,6 @@ class TestCatalogue:
         assert rv.status_code == 404
 
 
-# =============================================================================
-# 5. FAVORITES (HTTP)
-# =============================================================================
 
 class TestFavorites:
     def test_favorites_requires_login(self, client):
@@ -397,9 +382,6 @@ class TestFavorites:
         assert rv.status_code == 404
 
 
-# =============================================================================
-# 6. CART (HTTP)
-# =============================================================================
 
 class TestCart:
     def test_cart_requires_login(self, client):
@@ -451,9 +433,6 @@ class TestCart:
         assert b"2" in rv.data  # qty = 2
 
 
-# =============================================================================
-# 7. CARD PAYMENT (HTTP)
-# =============================================================================
 
 class TestCardPayment:
     def _setup_cart(self, client, email):
@@ -593,9 +572,6 @@ class TestCardPayment:
         assert rv.data.count(b"li>") >= 3 or b"invalide" in rv.data.lower()
 
 
-# =============================================================================
-# 8. ORDERS (HTTP)
-# =============================================================================
 
 class TestOrders:
     def test_orders_requires_login(self, client):
@@ -628,9 +604,6 @@ class TestOrders:
         assert b"#" in rv.data  # "Commande #N"
 
 
-# =============================================================================
-# 9. ADMIN ACCESS CONTROL (HTTP)
-# =============================================================================
 
 class TestAdminAccess:
     def test_admin_dashboard_requires_login(self, client):
@@ -683,9 +656,6 @@ class TestAdminAccess:
         assert b"invalide" in rv.data.lower()
 
 
-# =============================================================================
-# 10. SELLER FLOW (HTTP)
-# =============================================================================
 
 class TestSellerFlow:
     def test_seller_post_page_requires_login(self, client):
@@ -706,9 +676,6 @@ class TestSellerFlow:
         assert b"annonce" in rv.data.lower()
 
 
-# =============================================================================
-# 11. PUBLIC POSTS (HTTP)
-# =============================================================================
 
 class TestPublicPosts:
     def test_posts_page_accessible(self, client):
@@ -716,9 +683,7 @@ class TestPublicPosts:
         assert rv.status_code == 200
 
 
-# =============================================================================
-# 12. MESSAGES (HTTP)
-# =============================================================================
+
 
 class TestMessages:
     def test_messages_requires_login(self, client):
